@@ -185,6 +185,7 @@ export PATH="`echo $PATH | sed 's/\(:.\|:\)*:/:/g;s/^.\?://;s/:.\?$//'`"
 if [ "$build_dir_setup_enabled" = "true" ] || [ ! -z "$MACHINE" ]; then
     TEMPLATES=$CWD/sources/base/$MACHINE
     cp $TEMPLATES/* conf/
+    cp $CWD/sources/base/bblayers.conf conf/bblayers.conf
     # Change settings according environment
     sed -e "s,MACHINE ?=.*,MACHINE ?= '$MACHINE',g" \
         -e "s,DL_DIR ?=.*,DL_DIR ?= '$CWD/downloads',g" \

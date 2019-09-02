@@ -1,0 +1,212 @@
+#!/bin/sh
+# -*- mode: shell-script; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+#
+# Copyright (C) 2012, 2013, 2016 O.S. Systems Software LTDA.
+# Authored-by:  Otavio Salvador <otavio@ossystems.com.br>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Add options for the script
+# Copyright (C) 2019 Analog Devices, Inc.
+
+CWD=`pwd`
+PROGNAME="setup-environment"
+
+usage()
+{
+    echo -e "
+Usage: source $PROGNAME -m <machine> -b <build-dir> 
+Usage: source $PROGNAME -b <build-dir>
+Usage: source $PROGNAME -h
+Usage: source $PROGNAME
+    <machine>    machine name
+    <build-dir>  build directory
+
+The first usage is for creating a new build directory. In this case, the
+script creates the build directory <build-dir>, configures it for the
+specified <machine>, and prepares the calling shell for running
+bitbake on the build directory.
+"
+
+    ls sources/meta-adi/meta-adi-adsp-sc5xx/conf/machine/*.conf > /dev/null 2>&1
+    ls sources/meta-adi/meta-adi-adsp-sc5xx/conf/distro/adi-*.conf > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        echo -e "
+Supported machines: `echo; ls sources/meta-adi/meta-adi-adsp-sc5xx/conf/machine/*.conf \
+| sed s/\.conf//g | sed -r 's/^.+\///' | xargs -I% echo -e "\t%"`
+
+Supported ADI's distros: `echo; ls sources/meta-adi/meta-adi-adsp-sc5xx/conf/distro/adi-*.conf \
+| sed s/\.conf//g | sed -r 's/^.+\///' | xargs -I% echo -e "\t%"`
+
+Examples:
+
+- To create a new Yocto build directory, the order can't be changed, -m firstly -b secondly:
+  $ source $PROGNAME -m adsp-sc589-ezkit -b build 
+- To create a new Yocto build directory, the build dir is 'build' by default if there is no -b <build-dir> provided:
+  $ source $PROGNAME -m adsp-sc589-ezkit
+- To use an existing Yocto build directory:
+  $ source $PROGNAME -b builddir
+- Reuse existing 'build' folder.
+  $ source $PROGNAME
+- To get the help information
+  $ source $PROGNAME -h
+"
+    fi
+}
+
+clean_up()
+{
+   unset LIST_MACHINES VALID_MACHINE BUILDDIR VALID_MACHINE
+   unset CWD TEMPLATES SHORTOPTS LONGOPTS ARGS PROGNAME
+   unset generated_config updated
+   unset MACHINE SDKMACHINE DISTRO OEROOT
+}
+
+SHORTOPTS="hmb"
+LONGOPTS="help,machine,builddir"
+
+ARGS=$(getopt --options $SHORTOPTS  \
+  --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
+# Print the usage menu if invalid options are specified
+if [ $? != 0 -o $# -lt 1 ]; then
+   usage && clean_up
+   return 1
+fi
+
+eval set -- "$ARGS"
+MACHINE=
+BUILDDIR=
+while true;
+do
+    case $1 in
+        -h|--help)
+           usage
+           clean_up
+           return 0
+           ;;
+        -m|--machine)
+        if [ $# -eq 3 ];then
+            MACHINE="$3"
+        else
+            MACHINE=$4
+        fi
+            shift
+           ;;
+        -b|--builddir)
+        if [ $# -eq 3 ];then
+            BUILDDIR="$3"
+        else
+            BUILDDIR=$4
+        fi
+           shift
+           ;;
+
+        --)
+           shift
+           break
+           ;;
+    esac
+done
+
+if [ "$(whoami)" = "root" ]; then
+    echo "ERROR: do not use the BSP as root. Exiting..."
+fi
+
+if [ -z "$BUILDDIR" ]; then
+    folder="build"
+else
+    folder="$BUILDDIR"
+fi
+
+if [ ! -e $CWD/$folder/conf/local.conf ]; then
+    build_dir_setup_enabled="true"
+else
+    build_dir_setup_enabled="false"
+fi
+
+if [ "$build_dir_setup_enabled" = "true" ] && [ -z "$MACHINE" ]; then
+    usage
+    echo -e "ERROR: You must set MACHINE when creating a new build directory."
+    clean_up
+    return 1
+fi
+# check whether the provided machine is valid or not
+if [ "$build_dir_setup_enabled" = "true" ] || [ ! -z "$MACHINE" ];then
+    arr=`ls sources/meta-adi/meta-adi-adsp-sc5xx/conf/machine/*.conf | sed s/\.conf//g | sed -r 's/^.+\///'`
+    VALID_MACHINE=
+    for i in $arr
+    do  
+        if [ "$i" == "$MACHINE" ];then
+            VALID_MACHINE=1
+        fi
+    done
+    if [ "$VALID_MACHINE" != 1 ];then
+        usage
+        echo -e "ERROR: The -m <machine> you provide is invalid. "
+        clean_up
+        return 1
+    fi
+fi
+
+if [ ! -e $CWD/downloads ];then
+	mkdir $CWD/downloads
+fi
+
+OEROOT=$PWD/sources/poky
+if [ -e $PWD/sources/oe-core ]; then
+    OEROOT=$PWD/sources/oe-core
+fi
+# get the available kernel array for users
+kernel_arr=`ls sources/meta-adi/meta-adi-adsp-sc5xx/recipes-core/images/*.bb | sed s/\.bb//g | sed -r 's/^.+\///' | xargs -I% echo -e "\t%"`
+
+. $OEROOT/oe-init-build-env $CWD/$folder > /dev/null
+
+# if conf/local.conf not generated, no need to go further
+if [ ! -e conf/local.conf ]; then
+    clean_up && return 1
+fi
+
+generated_config=0
+# Clean up PATH, because if it includes tokens to current directories somehow,
+# wrong binaries can be used instead of the expected ones during task execution
+export PATH="`echo $PATH | sed 's/\(:.\|:\)*:/:/g;s/^.\?://;s/:.\?$//'`"
+
+if [ "$build_dir_setup_enabled" = "true" ] || [ ! -z "$MACHINE" ]; then
+    TEMPLATES=$CWD/sources/base/$MACHINE
+    cp $TEMPLATES/* conf/
+    # Change settings according environment
+    sed -e "s,MACHINE ?=.*,MACHINE ?= '$MACHINE',g" \
+        -e "s,DL_DIR ?=.*,DL_DIR ?= '$CWD/downloads',g" \
+        -i conf/local.conf
+
+    generated_config=1
+fi
+
+if [ "$generated_config" == 1 ]; then
+    cat <<EOF
+Your build environment has been configured with:
+
+        MACHINE=$MACHINE
+
+You can now run 'bitbake <target>'
+Some of common targets are:
+        u-boot-adi
+$kernel_arr
+
+EOF
+else
+    echo "You are reusing the files in $folder"
+fi
+
+clean_up

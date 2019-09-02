@@ -79,7 +79,7 @@ LONGOPTS="help,machine,builddir"
 ARGS=$(getopt --options $SHORTOPTS  \
   --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
 # Print the usage menu if invalid options are specified
-if [ $? != 0 -o $# -lt 1 ]; then
+if [ $? != 0 ]; then
    usage && clean_up
    return 1
 fi
@@ -130,19 +130,19 @@ else
 fi
 
 if [ ! -e $CWD/$folder/conf/local.conf ]; then
-    build_dir_setup_enabled="true"
+    build_dir_not_exist="true"
 else
-    build_dir_setup_enabled="false"
+    build_dir_not_exist="false"
 fi
 
-if [ "$build_dir_setup_enabled" = "true" ] && [ -z "$MACHINE" ]; then
+if [ "$build_dir_not_exist" = "true" ] && [ -z "$MACHINE" ]; then
     usage
     echo -e "ERROR: You must set MACHINE when creating a new build directory."
     clean_up
     return 1
 fi
 # check whether the provided machine is valid or not
-if [ "$build_dir_setup_enabled" = "true" ] || [ ! -z "$MACHINE" ];then
+if [ "$build_dir_not_exist" = "true" ] || [ ! -z "$MACHINE" ];then
     arr=`ls sources/meta-adi/meta-adi-adsp-sc5xx/conf/machine/*.conf | sed s/\.conf//g | sed -r 's/^.+\///'`
     VALID_MACHINE=
     for i in $arr
@@ -182,7 +182,7 @@ generated_config=0
 # wrong binaries can be used instead of the expected ones during task execution
 export PATH="`echo $PATH | sed 's/\(:.\|:\)*:/:/g;s/^.\?://;s/:.\?$//'`"
 
-if [ "$build_dir_setup_enabled" = "true" ] || [ ! -z "$MACHINE" ]; then
+if [ "$build_dir_not_exist" = "true" ] || [ ! -z "$MACHINE" ]; then
     TEMPLATES=$CWD/sources/base/$MACHINE
     cp $TEMPLATES/* conf/
     cp $CWD/sources/base/bblayers.conf conf/bblayers.conf

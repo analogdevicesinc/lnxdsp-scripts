@@ -67,7 +67,7 @@ Examples:
 
 clean_up()
 {
-   unset LIST_MACHINES VALID_MACHINE BUILDDIR VALID_MACHINE
+   unset LIST_MACHINES VALID_MACHINE USER_BUILDDIR
    unset CWD TEMPLATES SHORTOPTS LONGOPTS ARGS PROGNAME
    unset generated_config updated
    unset MACHINE SDKMACHINE DISTRO OEROOT
@@ -86,7 +86,7 @@ fi
 
 eval set -- "$ARGS"
 MACHINE=
-BUILDDIR=
+USER_BUILDDIR=
 while true;
 do
     case $1 in
@@ -105,9 +105,9 @@ do
            ;;
         -b|--builddir)
         if [ $# -eq 3 ];then
-            BUILDDIR="$3"
+            USER_BUILDDIR="$3"
         else
-            BUILDDIR=$4
+            USER_BUILDDIR=$4
         fi
            shift
            ;;
@@ -123,10 +123,10 @@ if [ "$(whoami)" = "root" ]; then
     echo "ERROR: do not use the BSP as root. Exiting..."
 fi
 
-if [ -z "$BUILDDIR" ]; then
+if [ -z "$USER_BUILDDIR" ]; then
     folder="build"
 else
-    folder="$BUILDDIR"
+    folder="$USER_BUILDDIR"
 fi
 
 if [ ! -e $CWD/$folder/conf/local.conf ]; then

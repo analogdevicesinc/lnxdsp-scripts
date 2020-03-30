@@ -168,7 +168,7 @@ if [ -e $PWD/sources/oe-core ]; then
     OEROOT=$PWD/sources/oe-core
 fi
 # get the available kernel array for users
-kernel_arr=`ls sources/meta-adi/meta-adi-adsp-sc5xx/recipes-core/images/*.bb | sed s/\.bb//g | sed -r 's/^.+\///' | xargs -I% echo -e "\t%"`
+kernel_arr=`ls sources/meta-adi/meta-adi-adsp-sc5xx/recipes-adi/images/*.bb | sed s/\.bb//g | sed -r 's/^.+\///' | xargs -I% echo -e "\t%"`
 
 . $OEROOT/oe-init-build-env $CWD/$folder > /dev/null
 
@@ -203,6 +203,7 @@ Your build environment has been configured with:
 You can now run 'bitbake <target>'
 Some of common targets are:
         u-boot-adi
+        linux-adi
 $kernel_arr
 
 EOF

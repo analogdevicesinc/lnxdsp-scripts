@@ -21,12 +21,12 @@ $ sudo apt install python3.7 python3-pip
 # No need to update uboot and load with ramboot with providing deplyfolder
 >sudo python3 LUK.py -b ramboot -m adsp-sc584-ezkit -f /tmp/deploy/images/adsp-sc584-ezkit
 
-# Only update uboot, not laod kernel
->sudo python3 LUK.py -m adsp-sc584-ezkit --updateUboot -e 2000 --ipaddres 10.100.4.50 --serverip 10.100.4.174
-
+# CCES_HOME need to be set if update uboot, TODO, when openOCD repo is ready this should be change to OPENOCD_HOME
+# Only update uboot, not laod kernel, 
+>sudo CCES_HOME=/opt/analog/cces/${ccesVersion} python3 LUK.py -m adsp-sc584-ezkit --updateUboot -e 2000 --ipaddres 10.100.4.50 --serverip 10.100.4.174
 
 # Update uboot and load with nfsboot with providing deplyfolder
->sudo python3 LUK.py -b nfsboot -m adsp-sc584-ezkit -f /tmp/deploy/images/adsp-sc584-ezkit/ --updateUboot -e 2000 --ipaddres 10.100.4.50 --serverip 10.100.4.174
+>sudo CCES_HOME=/opt/analog/cces/${ccesVersion} python3 LUK.py -b nfsboot -m adsp-sc584-ezkit -f /tmp/deploy/images/adsp-sc584-ezkit/ --updateUboot -e 2000 --ipaddres 10.100.4.50 --serverip 10.100.4.174
 ```
 
 ### Help ###

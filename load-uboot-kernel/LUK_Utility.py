@@ -62,7 +62,7 @@ def copyFiles(bootType, machine, deployFolder, updateUboot = True):
             fileList.append(ramdiskFile)
 
     if bootType == "sdcardboot":
-            pass # TODO 
+            pass # TODO, will add more boot type later
 
     for file in fileList:
         fileDir = os.path.join(deployFolder, file)

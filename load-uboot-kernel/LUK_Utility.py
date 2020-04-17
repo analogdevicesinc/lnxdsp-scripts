@@ -13,15 +13,8 @@
 import os,re,shutil,serial
 from io import BytesIO as StringIO
 import threading
-
-IMAGE_TYPES = ['adsp-sc5xx-full', 'adsp-sc5xx-minimal', 'adsp-sc5xx-ramdisk'] 
-COPY_DST_FOLDER = '/tftpboot'
-
-NFS_TAR_FILE_POSTFIX = '.tar.xz'
-NFS_DST_FOLDER= '/romfs'
-
-RAMDISK_FILE_POSTFIX = '.cpio.xz.u-boot'
-RAMDISK_FILE_NAME = 'ramdisk.cpio.xz.u-boot'
+from config import IMAGE_TYPES, COPY_DST_FOLDER, NFS_TAR_FILE_POSTFIX, NFS_DST_FOLDER, RAMDISK_FILE_POSTFIX, RAMDISK_FILE_NAME, \
+    UBOOT_FILE_LIST, NFS_CP_CMD_LIST, Z_IMAGE, DTB_POSTFIX
 
 
 def copyFiles(bootType, machine, deployFolder, updateUboot = True):
@@ -30,10 +23,10 @@ def copyFiles(bootType, machine, deployFolder, updateUboot = True):
     os.environ[ 'tftp' ] = COPY_DST_FOLDER
 
     if updateUboot:
-        fileList += ['u-boot', 'u-boot.ldr']
+        fileList += UBOOT_FILE_LIST
 
     if bootType.lower() in ("nfsboot", "ramboot") :
-        fileList += ['zImage', "%s.dtb" %machine[5:]]
+        fileList += [ Z_IMAGE, machine[5:] + DTB_POSTFIX ]
         tarFile = ''
         ramdiskFile = ''
         for (roots, dirs, files ) in os.walk( deployFolder ):
@@ -51,8 +44,8 @@ def copyFiles(bootType, machine, deployFolder, updateUboot = True):
             if tarFile == '':
                 raise Exception("Can't find the NFS tar file")
             os.environ[ 'rootfs' ] = NFS_DST_FOLDER
-            cmdList = ["sudo rm -rf NFSFOLDER", "sudo mkdir NFSFOLDER", "sudo chmod 777 NFSFOLDER", "tar -xvf %s -C NFSFOLDER" %(os.path.join(deployFolder, tarFile))]
-            cmdList = [c.replace('NFSFOLDER', NFS_DST_FOLDER) for c in cmdList]
+            nfsTarFile = os.path.join(deployFolder, tarFile)
+            cmdList = replaceMacros([('NFSFOLDER', NFS_DST_FOLDER), ('NFS_SRC_TAR_FILE', nfsTarFile)], NFS_CP_CMD_LIST)
             for cmd in cmdList: 
                 os.system(cmd)
 
@@ -71,15 +64,14 @@ def copyFiles(bootType, machine, deployFolder, updateUboot = True):
         else:
             raise Exception("Can't copy due to the %s doesn't exist in %s" %(fileDir, deployFolder) )
 
-def replaceMacros(ipaddr, serverip, cmdList):
+def replaceMacros(macros, cmdList):
+    # replace the uppercase macros to real data 
     updatedList = []
-    if checkValidIp(ipaddr) and checkValidIp(serverip):
-        for line in cmdList:
-            line = line.replace("SERVERIP", serverip)
-            line = line.replace("IPADDR", ipaddr)
+    for line in cmdList:
+        for macro in macros:
+            line = line.replace(macro[0], macro[1])
             updatedList.append( line )
-    else:
-        raise Exception("The ipaddress or serverip provided is invalid")
+
     return updatedList 
 
 def checkValidIp (Ip):

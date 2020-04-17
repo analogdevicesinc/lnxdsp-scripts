@@ -100,9 +100,9 @@ class UbootKernelLoader:
     ##########################################################################
     def loadOpenOCD (self):
         # this need update once openocd has independent repo
-        ccesHome = CCES_HOME
-        if not ccesHome:
-            raise Exception( 'Failed to determine openOCD path. Has the CCES_HOME environment variable been set correctly?' )
+        openOCDHome = OPENOCD_HOME
+        if not openOCDHome:
+            raise Exception( 'Failed to determine openOCD path. Has the OPENOCD_HOME environment variable been set correctly?' )
         # setup for openocd
         emulatorCfg = 'ice%s.cfg'%self.emulator
         configfile = ''
@@ -113,11 +113,11 @@ class UbootKernelLoader:
         if configfile and emulatorCfg:
             self.logOutput(text = "Connecting board via openOCD", printout = True )
             self.openocdProcess = subprocess.Popen( 
-                args = [ os.path.normpath( os.path.join( ccesHome, OPENOCD_PATH, OPENOCD_DEFAULT_BINARY ) ),
+                args = [ os.path.normpath( os.path.join( openOCDHome, OPENOCD_PATH, OPENOCD_DEFAULT_BINARY ) ),
                             '-f', 'interface/%s'%emulatorCfg,
                             '-f', 'target/%s'%configfile,
                             ],
-                cwd = os.path.normpath( os.path.join( ccesHome, OPENOCD_CONFIG_PATH ) ),
+                cwd = os.path.normpath( os.path.join( openOCDHome, OPENOCD_CONFIG_PATH ) ),
                 stdout = self.openOCDLog.logFile,
                 stderr = subprocess.STDOUT )
         else:
@@ -129,7 +129,7 @@ class UbootKernelLoader:
         gdbPath = GDB_DEFAULT_PATH
         gdbBin = GDB_DEFAULT_BINARY
         self.gdbProcess = subprocess.Popen( 
-            args = [ os.path.normpath( os.path.join( CCES_HOME, gdbPath, gdbBin ) ), 
+            args = [ os.path.normpath( os.path.join( OPENOCD_HOME, gdbPath, gdbBin ) ), 
                     '-q', '--interpreter=mi2', '--nx', GDB_LOAD_UBOOT],
             cwd =  os.path.normpath(COPY_DST_FOLDER),
             stdin = subprocess.PIPE, 

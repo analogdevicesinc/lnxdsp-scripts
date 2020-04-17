@@ -18,7 +18,7 @@ COM_PORT = '/dev/ttyUSB0'
 SERVER_IP = '10.100.4.174'
 IP_ADDR = '10.100.4.50'
 UBOOT_UPDATE = True
-DEPLOY_FOLDER = '/home/test/workspace/timesys/yocto/build/tmp/deploy/images/adsp-sc584-ezkit/'
+DEPLOY_FOLDER = ''
 
 # BOOT commands for different boot type
 SET_IP = ['set serverip SERVER_IP', 'set ipaddr IP_ADDR']
@@ -43,7 +43,7 @@ WAIT_TIMEOUT = 5
 UART_TIMEOUT = 3*60
 
 # OpenOCD related parameters
-CCES_HOME = '/opt/analog/cces/2.9.2'
+OPENOCD_HOME = '/opt/analog/cces/2.9.2' # TODO this need change when we have openOCD repo
 OPENOCD_CONFIG_PATH = 'ARM/openocd/share/openocd/scripts/'
 OPENOCD_PATH = 'ARM/openocd/bin/'
 OPENOCD_DEFAULT_BINARY = 'openocd'

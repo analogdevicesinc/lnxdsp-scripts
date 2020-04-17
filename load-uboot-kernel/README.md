@@ -7,7 +7,7 @@ $ source setup-load-env.sh
 ```
 # Usage #
 
-This tool will parse the macros in config.py file firstly, then check whetherer there are any options like -m -b 
+This tool will parse the macros in config.py file firstly, then check options like -m -b 
 
 ### Method 1: Update config.py file(for manual) ###
 

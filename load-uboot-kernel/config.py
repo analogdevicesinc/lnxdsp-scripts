@@ -12,12 +12,12 @@
 
 # OPTIONS varaiables
 MACHINE = 'adsp-sc584-ezkit'
-EMULATOR = '1000'
+EMULATOR = '2000'
 BOOTTYPE = 'nfsboot'
 COM_PORT = '/dev/ttyUSB0'
 SERVER_IP = '10.100.4.174'
 IP_ADDR = '10.100.4.50'
-UBOOT_UPDATE = False
+UBOOT_UPDATE = True
 DEPLOY_FOLDER = '/home/test/workspace/timesys/yocto/build/tmp/deploy/images/adsp-sc584-ezkit/'
 
 # BOOT commands for different boot type
@@ -43,6 +43,7 @@ WAIT_TIMEOUT = 5
 UART_TIMEOUT = 3*60
 
 # OpenOCD related parameters
+CCES_HOME = '/opt/analog/cces/2.9.2'
 OPENOCD_CONFIG_PATH = 'ARM/openocd/share/openocd/scripts/'
 OPENOCD_PATH = 'ARM/openocd/bin/'
 OPENOCD_DEFAULT_BINARY = 'openocd'
@@ -53,7 +54,7 @@ OPENOCD_TARGET_CFG_FILE = {
 
 # GDB related parameters
 GDB_OPENOCD_DEFAULT_PORT = '3333'
-GDB_DEFAULT_PATH = 'ARM/arGDB_m-none-eabi/bin/'
+GDB_DEFAULT_PATH = 'ARM/arm-none-eabi/bin/'
 GDB_DEFAULT_BINARY = 'arm-none-eabi-gdb'
 GDB_LOAD_UBOOT = 'u-boot'
 GDB_ELF_FILE = 'init.elf'
@@ -72,5 +73,3 @@ RAMDISK_FILE_NAME = 'ramdisk.cpio.xz.u-boot'
 UBOOT_FILE_LIST = ['u-boot', 'u-boot.ldr']
 Z_IMAGE = 'zImage'
 DTB_POSTFIX = '.dtb'
-
-

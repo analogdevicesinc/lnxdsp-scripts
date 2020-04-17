@@ -71,7 +71,7 @@ class UbootKernelLoader:
             terminateProcess(process)
 
     def load(self,):
-        pwCfg = os.path.join(os.path.dirname( LOADER_ROOT ),"PW_RESET.CFG")
+        pwCfg = os.path.join( LOADER_ROOT ,"PW_RESET.CFG")
         self.serial.open()
         if self.serial.isOpen():
             if self.emulator and self.updateUboot and self.ipaddr and self.serverip:
@@ -80,6 +80,7 @@ class UbootKernelLoader:
                 self.loadGDB()
             elif os.path.isfile(pwCfg):
                 # handle the power cycle in automation testing when don't update the uboot
+                self.logOutput( 'Power reset board with file %s.'%pwCfg, printout = True )
                 with open( pwCfg, 'r' ) as f:
                     content = f.readlines()
                 for line in content:
@@ -99,7 +100,7 @@ class UbootKernelLoader:
     ##########################################################################
     def loadOpenOCD (self):
         # this need update once openocd has independent repo
-        ccesHome = os.getenv( 'CCES_HOME' )
+        ccesHome = CCES_HOME
         if not ccesHome:
             raise Exception( 'Failed to determine openOCD path. Has the CCES_HOME environment variable been set correctly?' )
         # setup for openocd
@@ -128,7 +129,7 @@ class UbootKernelLoader:
         gdbPath = GDB_DEFAULT_PATH
         gdbBin = GDB_DEFAULT_BINARY
         self.gdbProcess = subprocess.Popen( 
-            args = [ os.path.normpath( os.path.join( os.getenv( 'CCES_HOME' ), gdbPath, gdbBin ) ), 
+            args = [ os.path.normpath( os.path.join( CCES_HOME, gdbPath, gdbBin ) ), 
                     '-q', '--interpreter=mi2', '--nx', GDB_LOAD_UBOOT],
             cwd =  os.path.normpath(COPY_DST_FOLDER),
             stdin = subprocess.PIPE, 
@@ -136,7 +137,7 @@ class UbootKernelLoader:
             stderr = subprocess.STDOUT )
 
         self.logOutput( self.read_until_prompt(), True )
-        self.send_cmd_gdb( 'target remote :%s' % GDB_OPENOCD_DEFAULT_PORT )
+        self.send_cmd_gdb( 'target remote :%s' %GDB_OPENOCD_DEFAULT_PORT )
         try:
             self.logOutput( self.read_until_prompt(), True )
         except:pass
@@ -149,17 +150,19 @@ class UbootKernelLoader:
             self.logOutput( self.read_until_prompt(), True )
         time.sleep(SHORT_SLEEP_TIME)
         self.readSerialData()
-        if self.data: self.serial.write('\n\n'.encode('utf-8'))
+        if self.data: self.serial.write(b'\n\n')
         for cmd in replaceMacros([('SERVER_IP', self.serverip), ('IP_ADDR', self.ipaddr)], BOOT_CMD['update_uboot']):
             self.writeDataToSerial( cmd )
-        self.logOutput(text = "U-boot upadted succuesfully", printout = True )
+        self.logOutput(text = "U-boot updated succuesfully", printout = True )
 
     def loadKernel(self):
         self.readSerialData()
         if self.data: 
-            self.serial.write('\n\n'.encode('utf-8'))
+            self.serial.write(b'\n\n')
             self.logOutput(text = "Go into U-boot succuesfully", printout = True )
         # check whether u-boot load successfully.
+        time.sleep(SHORT_SLEEP_TIME)
+        self.readSerialData()
         if UBOOT_LOAD_PASS_MSG in self.data:  
             for bt in BOOT_CMD:
                 if bt == self.bootType:

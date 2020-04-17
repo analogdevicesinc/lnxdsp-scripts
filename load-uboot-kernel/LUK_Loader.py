@@ -16,50 +16,13 @@ import os,sys,re,time,optparse
 import shutil
 import subprocess
 import signal
-try:
-    importlib.import_module('serial')
-except:
-    os.system( "%s -m pip install %s"%(sys.executable, 'pyserial'))
-    import serial
+import serial
+from config import *
+from LUK_Utility import copyFiles, LogFile, replaceMacros
 
 LOADER_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(LOADER_ROOT)
-from LUK_Utility import copyFiles, LogFile, replaceMacros
 
-SHORT_SLEEP_TIME = 2
-WAIT_TIMEOUT = 5
-UART_TIMEOUT = 3*60
-# OpenOCD constants
-DEFAULT_OPENOCD_BINARY = 'openocd'
-DEFAULT_OPENOCD_GDB_PORT = '3333'
-DEBUG_CONFIGURATIONS = {
-			'path':'ARM/arm-none-eabi/bin/',
-			'bin':'arm-none-eabi-gdb'
-			}
-TARGET_CFG_FILE = {
-    'sc58[4|9]':'adspsc58x.cfg',
-    'sc573':'adspsc57x.cfg',
-}
-# OpenOCD configuration path
-OPENOCD_CONFIG_PATH = 'ARM/openocd/share/openocd/scripts/'
-# OpenOCD path
-OPENOCD_PATH = 'ARM/openocd/bin/'
-# GDB related
-LOAD_UBOOT = 'u-boot'
-ELF_FILE = 'init.elf'
-GDB_ERROR_CMD = r'\^error,msg=(\".*\")'
-PROMPT = '(gdb) \n'
-TRY_CONNECT_TIMES = 2
-
-# BOOT commands:
-BOOT_CMD = {
-'update_uboot':['set serverip SERVERIP', 'set ipaddr IPADDR', 'run update'],
-'nfsboot': ['set serverip SERVERIP', 'set ipaddr IPADDR', 'run nfsboot'],
-'ramboot': ['run ramboot'],
-'sdcardboot': ['run sdcardboot']
-}
-UBOOT_LOAD_PASS_MSG = 'sc #'
-KERNEL_LOAD_PASS_MSG = 'MACHINE login:'
 
 class UbootKernelLoader:
 
@@ -69,15 +32,14 @@ class UbootKernelLoader:
         self.bootType = parameters['bootType'].lower()
         self.emulator = parameters['emulator']
         self.deployFolder = parameters['deployFolder']
-        self.ipaddres = parameters['ipaddres']
+        self.ipaddr = parameters['ipaddr']
         self.serverip = parameters['serverip']
         self.updateUboot = parameters['updateUboot']
-        self.comPort =  parameters['comPort'] if parameters['comPort'] else '/dev/ttyUSB0'
         self.serial = serial.Serial()
-        self.serial.port = self.comPort
-        self.serial.baudrate = 57600
-        self.serial.timeout = 1
-        if self.serial.isOpen():self.serial.close()
+        self.serial.port = parameters['comPort']
+        self.serial.baudrate = SERIAL_BAUDRATE
+        self.serial.timeout = SERIAL_TIMEOUT
+        if self.serial.isOpen(): self.serial.close()
         self.data = ''
         self.openocdProcess = None
         self.gdbProcess = None
@@ -110,67 +72,12 @@ class UbootKernelLoader:
 
     def load(self,):
         pwCfg = os.path.join(os.path.dirname( LOADER_ROOT ),"PW_RESET.CFG")
-
         self.serial.open()
         if self.serial.isOpen():
-            if self.emulator and self.updateUboot and self.ipaddres and self.serverip:
-                # this need update once openocd has independent repo
-                ccesHome = os.getenv( 'CCES_HOME' )
-                if not ccesHome:
-                    raise Exception( 'Failed to determine openOCD path. Has the CCES_HOME environment variable been set correctly?' )
-                # setup for openocd
-                emulatorCfg = 'ice%s.cfg'%self.emulator
-                configfile = ''
-                for regex in TARGET_CFG_FILE:
-                    if re.findall(regex, self.machine.split("-")[1]):
-                        configfile = TARGET_CFG_FILE[regex]
-
-                if configfile and emulatorCfg:
-                    self.logOutput(text = "Connecting board via openOCD", printout = True )
-                    self.openocdProcess = subprocess.Popen( 
-                        args = [ os.path.normpath( os.path.join( ccesHome, OPENOCD_PATH, DEFAULT_OPENOCD_BINARY ) ),
-                                    '-f', 'interface/%s'%emulatorCfg,
-                                    '-f', 'target/%s'%configfile,
-                                    ],
-                        cwd = os.path.normpath( os.path.join( ccesHome, OPENOCD_CONFIG_PATH ) ),
-                        stdout = self.openOCDLog.logFile,
-                        stderr = subprocess.STDOUT )
-                else:
-                    raise RuntimeError( 'Cannot find debug configuration file or emulator configuration file ' )
-
-                # setup for GDB
-                self.logOutput(text = "Debugging via GDB", printout = True )
-                gdbPath = DEBUG_CONFIGURATIONS['path']
-                gdbBin = DEBUG_CONFIGURATIONS['bin']
-                self.gdbProcess = subprocess.Popen( 
-                    args = [ os.path.normpath( os.path.join( ccesHome, gdbPath, gdbBin ) ), 
-                           '-q', '--interpreter=mi2', '--nx', LOAD_UBOOT],
-                    cwd =  os.path.normpath('/tftpboot'),
-                    stdin = subprocess.PIPE, 
-                    stdout =  subprocess.PIPE,
-                    stderr = subprocess.STDOUT )
-
-                self.logOutput( self.read_until_prompt(), True )
-                self.send_cmd_gdb( 'target remote :%s' % DEFAULT_OPENOCD_GDB_PORT )
-                try:
-                    self.logOutput( self.read_until_prompt(), True )
-                except:pass
-
-                send_gdb_cmds = ['load %s'%ELF_FILE, 'c', 'Ctrl-c', 'load %s'%LOAD_UBOOT, 'c']
-
-                for cmd in send_gdb_cmds:
-                    if cmd == 'Ctrl-c': 
-                        self.gdbProcess.send_signal(signal.SIGINT)
-                    else:
-                        self.send_cmd_gdb( cmd )
-                    self.logOutput( self.read_until_prompt(), True )
-                time.sleep(SHORT_SLEEP_TIME)
-                self.readSerialData()
-                if self.data: self.serial.write('\n\n'.encode('utf-8'))
-                for cmd in replaceMacros(self.ipaddres, self.serverip, BOOT_CMD['update_uboot']):
-                    self.writeDataToSerial( cmd )
-                self.logOutput(text = "U-boot upadted succuesfully", printout = True )
-
+            if self.emulator and self.updateUboot and self.ipaddr and self.serverip:
+                # update uboot with openOCD and GDB
+                self.loadOpenOCD()
+                self.loadGDB()
             elif os.path.isfile(pwCfg):
                 # handle the power cycle in automation testing when don't update the uboot
                 with open( pwCfg, 'r' ) as f:
@@ -178,38 +85,101 @@ class UbootKernelLoader:
                 for line in content:
                     os.system(line)
             else:
+                # handle the power cycle in manually when debugging
                 input( "Please reset your board manually, and click KeyBoard enter in 5 seconds...")
 
             if self.bootType:
-                self.readSerialData()
-                if self.data: 
-                    self.serial.write('\n\n'.encode('utf-8'))
-                    self.logOutput(text = "Go into U-boot succuesfully", printout = True )
-                # check whether u-boot load successfully.
-                if UBOOT_LOAD_PASS_MSG in self.data:  
-                    for bt in BOOT_CMD:
-                        if bt == self.bootType:
-                            for cmd in replaceMacros(self.ipaddres, self.serverip, BOOT_CMD[bt]):
-                                self.writeDataToSerial( cmd )
-                    startTime = time.time()
-                    endTime = time.time()
-                    bootKernelResultFlag = False
-                    while (endTime - startTime) < UART_TIMEOUT:
-                        self.readSerialData()
-                        if KERNEL_LOAD_PASS_MSG.replace('MACHINE', self.machine) in self.data: 
-                            self.logOutput(text = "Load kernel successfully with %s" %self.bootType, printout = True )
-                            bootKernelResultFlag = True
-                            break
-                        endTime = time.time()
-                    if not bootKernelResultFlag:
-                        self.logOutput(text = "Load kernel failed, please check the log %s" %self.data, printout = True )
-                else: 
-                    self.disConnect()
-                    raise Exception("Can not go into U-boot, please check manually.")
+                # load kernel via serial port communication
+                self.loadKernel()
             self.logOutput( self.data, True )
             self.serial.close()
+
     ##########################################################################
     # Helper Methods
+    ##########################################################################
+    def loadOpenOCD (self):
+        # this need update once openocd has independent repo
+        ccesHome = os.getenv( 'CCES_HOME' )
+        if not ccesHome:
+            raise Exception( 'Failed to determine openOCD path. Has the CCES_HOME environment variable been set correctly?' )
+        # setup for openocd
+        emulatorCfg = 'ice%s.cfg'%self.emulator
+        configfile = ''
+        for regex in OPENOCD_TARGET_CFG_FILE:
+            if re.findall(regex, self.machine.split("-")[1]):
+                configfile = OPENOCD_TARGET_CFG_FILE[regex]
+
+        if configfile and emulatorCfg:
+            self.logOutput(text = "Connecting board via openOCD", printout = True )
+            self.openocdProcess = subprocess.Popen( 
+                args = [ os.path.normpath( os.path.join( ccesHome, OPENOCD_PATH, OPENOCD_DEFAULT_BINARY ) ),
+                            '-f', 'interface/%s'%emulatorCfg,
+                            '-f', 'target/%s'%configfile,
+                            ],
+                cwd = os.path.normpath( os.path.join( ccesHome, OPENOCD_CONFIG_PATH ) ),
+                stdout = self.openOCDLog.logFile,
+                stderr = subprocess.STDOUT )
+        else:
+            raise RuntimeError( 'Cannot find debug configuration file or emulator configuration file ' )
+
+    def loadGDB(self):
+        # setup for GDB
+        self.logOutput(text = "Debugging via GDB", printout = True )
+        gdbPath = GDB_DEFAULT_PATH
+        gdbBin = GDB_DEFAULT_BINARY
+        self.gdbProcess = subprocess.Popen( 
+            args = [ os.path.normpath( os.path.join( os.getenv( 'CCES_HOME' ), gdbPath, gdbBin ) ), 
+                    '-q', '--interpreter=mi2', '--nx', GDB_LOAD_UBOOT],
+            cwd =  os.path.normpath(COPY_DST_FOLDER),
+            stdin = subprocess.PIPE, 
+            stdout =  subprocess.PIPE,
+            stderr = subprocess.STDOUT )
+
+        self.logOutput( self.read_until_prompt(), True )
+        self.send_cmd_gdb( 'target remote :%s' % GDB_OPENOCD_DEFAULT_PORT )
+        try:
+            self.logOutput( self.read_until_prompt(), True )
+        except:pass
+
+        for cmd in GDB_SEND_CMDS:
+            if cmd == 'Ctrl-c': 
+                self.gdbProcess.send_signal(signal.SIGINT)
+            else:
+                self.send_cmd_gdb( cmd )
+            self.logOutput( self.read_until_prompt(), True )
+        time.sleep(SHORT_SLEEP_TIME)
+        self.readSerialData()
+        if self.data: self.serial.write('\n\n'.encode('utf-8'))
+        for cmd in replaceMacros([('SERVER_IP', self.serverip), ('IP_ADDR', self.ipaddr)], BOOT_CMD['update_uboot']):
+            self.writeDataToSerial( cmd )
+        self.logOutput(text = "U-boot upadted succuesfully", printout = True )
+
+    def loadKernel(self):
+        self.readSerialData()
+        if self.data: 
+            self.serial.write('\n\n'.encode('utf-8'))
+            self.logOutput(text = "Go into U-boot succuesfully", printout = True )
+        # check whether u-boot load successfully.
+        if UBOOT_LOAD_PASS_MSG in self.data:  
+            for bt in BOOT_CMD:
+                if bt == self.bootType:
+                    for cmd in replaceMacros([('SERVER_IP', self.serverip), ('IP_ADDR', self.ipaddr)], BOOT_CMD[bt]):
+                        self.writeDataToSerial( cmd )
+            startTime = time.time()
+            endTime = time.time()
+            bootKernelResultFlag = False
+            while (endTime - startTime) < UART_TIMEOUT:
+                self.readSerialData()
+                if KERNEL_LOAD_PASS_MSG.replace('MACHINE', self.machine) in self.data: 
+                    self.logOutput(text = "Load kernel successfully with %s" %self.bootType, printout = True )
+                    bootKernelResultFlag = True
+                    break
+                endTime = time.time()
+            if not bootKernelResultFlag:
+                self.logOutput(text = "Load kernel failed, please check the log %s" %self.data, printout = True )
+        else: 
+            self.disConnect()
+            raise Exception("Can not go into U-boot, please check manually.")
 
     def logOutput( self, text, raiseError = False, printout = False ):
         ''' write the given text to the output log '''
@@ -236,7 +206,7 @@ class UbootKernelLoader:
                     return True
             return False
         runTime = timestamp
-        message = PROMPT if not message else message
+        message = GDB_PROMPT if not message else message
         if process is None: process = self.gdbProcess 
         output = ''
         while(True):
@@ -266,5 +236,7 @@ class UbootKernelLoader:
         time.sleep(timeout)
         self.readSerialData()
         if self.data and (self.data.splitlines()[-1] != UBOOT_LOAD_PASS_MSG):
+            self.serial.write('\n'.encode('utf-8'))
             time.sleep(timeout)
+
         self.serial.write(msg.encode('utf-8'))

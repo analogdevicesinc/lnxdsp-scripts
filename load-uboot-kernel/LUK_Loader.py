@@ -153,7 +153,7 @@ class UbootKernelLoader:
         self.readSerialData()
         if self.data: self.serial.write(b'\n\n')
         updateUbootCmd = DHCP_CMD + BOOT_CMD['update_uboot'] if self.dhcp else \
-            replaceMacros([('SERVER_IP', self.serverip), ('IP_ADDR', self.ipaddr)], BOOT_CMD['update_uboot'])
+            replaceMacros([('SERVER_IP', self.serverip), ('IP_ADDR', self.ipaddr)], SET_IP) + BOOT_CMD['update_uboot']
         for cmd in updateUbootCmd:
             self.writeDataToSerial( cmd )
         self.logOutput(text = "U-boot updated succuesfully", printout = True )
@@ -163,14 +163,14 @@ class UbootKernelLoader:
         if self.data: 
             self.serial.write(b'\n\n')
             self.logOutput(text = "Go into U-boot succuesfully", printout = True )
-        # check whether u-boot load successfully.
+        # check whether u-boot load successfully or not.
         time.sleep(SHORT_SLEEP_TIME)
         self.readSerialData()
         if UBOOT_LOAD_PASS_MSG in self.data:  
             for bt in BOOT_CMD:
                 if bt == self.bootType:
                     kernelBootCmd = DHCP_CMD + BOOT_CMD[bt] if self.dhcp else \
-                        replaceMacros([('SERVER_IP', self.serverip), ('IP_ADDR', self.ipaddr)], BOOT_CMD[bt])
+                        replaceMacros([('SERVER_IP', self.serverip), ('IP_ADDR', self.ipaddr)], SET_IP) + BOOT_CMD[bt]
                     for cmd in kernelBootCmd:
                         self.writeDataToSerial( cmd )
             startTime = time.time()

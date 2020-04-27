@@ -35,6 +35,7 @@ class UbootKernelLoader:
         self.ipaddr = parameters['ipaddr']
         self.serverip = parameters['serverip']
         self.updateUboot = parameters['updateUboot']
+        self.dhcp = parameters['dhcp']
         self.serial = serial.Serial()
         self.serial.port = parameters['comPort']
         self.serial.baudrate = SERIAL_BAUDRATE
@@ -74,7 +75,7 @@ class UbootKernelLoader:
         pwCfg = os.path.join( LOADER_ROOT ,"PW_RESET.CFG")
         self.serial.open()
         if self.serial.isOpen():
-            if self.emulator and self.updateUboot and self.ipaddr and self.serverip:
+            if self.emulator and self.updateUboot and ((self.ipaddr and self.serverip) or self.dhcp):
                 # update uboot with openOCD and GDB
                 self.loadOpenOCD()
                 self.loadGDB()
@@ -151,7 +152,9 @@ class UbootKernelLoader:
         time.sleep(SHORT_SLEEP_TIME)
         self.readSerialData()
         if self.data: self.serial.write(b'\n\n')
-        for cmd in replaceMacros([('SERVER_IP', self.serverip), ('IP_ADDR', self.ipaddr)], BOOT_CMD['update_uboot']):
+        updateUbootCmd = DHCP_CMD + BOOT_CMD['update_uboot'] if self.dhcp else \
+            replaceMacros([('SERVER_IP', self.serverip), ('IP_ADDR', self.ipaddr)], BOOT_CMD['update_uboot'])
+        for cmd in updateUbootCmd:
             self.writeDataToSerial( cmd )
         self.logOutput(text = "U-boot updated succuesfully", printout = True )
 
@@ -166,7 +169,9 @@ class UbootKernelLoader:
         if UBOOT_LOAD_PASS_MSG in self.data:  
             for bt in BOOT_CMD:
                 if bt == self.bootType:
-                    for cmd in replaceMacros([('SERVER_IP', self.serverip), ('IP_ADDR', self.ipaddr)], BOOT_CMD[bt]):
+                    kernelBootCmd = DHCP_CMD + BOOT_CMD[bt] if self.dhcp else \
+                        replaceMacros([('SERVER_IP', self.serverip), ('IP_ADDR', self.ipaddr)], BOOT_CMD[bt])
+                    for cmd in kernelBootCmd:
                         self.writeDataToSerial( cmd )
             startTime = time.time()
             endTime = time.time()

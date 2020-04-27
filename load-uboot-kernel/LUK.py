@@ -12,7 +12,7 @@
 #########################################################################################
 
 import os,sys
-from config import MACHINE, EMULATOR, BOOTTYPE, COM_PORT, SERVER_IP, IP_ADDR, UBOOT_UPDATE, DEPLOY_FOLDER
+from config import MACHINE, EMULATOR, BOOTTYPE, COM_PORT, SERVER_IP, IP_ADDR, UBOOT_UPDATE, DEPLOY_FOLDER, DHCP
 from LUK_Options import Options
 from LUK_Loader import UbootKernelLoader
 from LUK_Utility import checkValidIp
@@ -31,15 +31,16 @@ def main(args=sys.argv):
 
     options = Options()
     options.set( args )
-
-    if not (checkValidIp(IP_ADDR) and checkValidIp(SERVER_IP)) :
-            raise Exception("Provided IP address or server IP in config file is invalid, please check manually." )
+    if (not DHCP) and (not options.getDhcp()):
+        if not (checkValidIp(IP_ADDR) and checkValidIp(SERVER_IP)) :
+                raise Exception("Provided IP address or server IP in config file is invalid, please check manually." )
 
     parameters = {
                 "bootType": options.getBootType() if options.getBootType() else BOOTTYPE,
                 "machine": options.getMachine() if options.getMachine() else MACHINE,
                 "deployFolder": options.getDeployFolder() if options.getDeployFolder() else DEPLOY_FOLDER,
                 "emulator": options.getEmulator() if options.getEmulator() else EMULATOR,
+                "dhcp": options.getDhcp() if options.getDhcp() else DHCP,
                 "ipaddr": options.getIpaddr() if options.getIpaddr() else IP_ADDR,
                 "serverip": options.getServerip() if options.getServerip() else SERVER_IP,
                 "updateUboot": options.getUpdateUboot() if options.getUpdateUboot() else UBOOT_UPDATE,

@@ -26,8 +26,9 @@ class _Options():
         parser.add_option( '-f', '--deployFolder', help='Specify the deploy folder to find the images that to be loaded, you can change DEPLOY_FOLDER in config file', dest='deployFolder', default='' )
         parser.add_option( '-e', '--emulator', help='Emulator used to connect with openOCD, e.g. 1000, 2000, you can change EMULATOR in config file', dest='emulator', default='' )
         parser.add_option( '-p', '--comPort', help='Specify the COM port connected to UART, you can change COM_PORT in config file', dest='comPort', default='' )
+        parser.add_option('--dhcp', help='Use dhcp to get the ipadd and serverip automatically', action='store_true', dest='dhcp', default=False )
         parser.add_option('--ipaddr', help='Board IP Address, you can change IP_ADDR in config file', dest='ipaddr', default='' )
-        parser.add_option('--serverip', help='The IP address of the PC connected with board, you can change SERVER_IP in config file', dest='serverip', default='' )
+        parser.add_option('--serverip', help='The IP address of the PC connected with board, you can change SERVER_IP in config file', dest='serverip', default='' )       
         parser.add_option('--updateUboot', help='Load the Uboot into flash with openOCD and GDB, you can change UBOOT_UPDATE in config file', action='store_true', dest='updateUboot', default=None )
 
         options = parser.parse_args( args = args )[0]
@@ -40,6 +41,7 @@ class _Options():
         self._ipaddr = options.ipaddr
         self._serverip = options.serverip
         self._updateUboot = options.updateUboot
+        self.__dhcp = options.dhcp
 
     def getBootType( self ):
         return self._bootType
@@ -70,7 +72,10 @@ class _Options():
 
     def getUpdateUboot( self ):
         return self._updateUboot    
-          
+
+    def getDhcp( self ):
+        return self.__dhcp
+   
 _options = _Options()
 
 # treat this as a singleton so that all modules get the same options

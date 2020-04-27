@@ -15,17 +15,19 @@ MACHINE = 'adsp-sc584-ezkit'
 EMULATOR = '2000'
 BOOTTYPE = 'nfsboot'
 COM_PORT = '/dev/ttyUSB0'
+DHCP = False
 SERVER_IP = '10.100.4.174'
 IP_ADDR = '10.100.4.50'
 UBOOT_UPDATE = True
 DEPLOY_FOLDER = ''
 
 # BOOT commands for different boot type
+DHCP_CMD = ['dhcp']
 SET_IP = ['set serverip SERVER_IP', 'set ipaddr IP_ADDR']
 BOOT_CMD = {
-'update_uboot':SET_IP + ['run update'],
-'nfsboot': SET_IP + ['run nfsboot'],
-'ramboot': SET_IP + ['run ramboot'],
+'update_uboot': ['run update'],
+'nfsboot': ['run nfsboot'],
+'ramboot': ['run ramboot'],
 'sdcardboot': ['run sdcardboot']
 }
 

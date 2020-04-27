@@ -11,7 +11,7 @@ This tool will parse the macros in config.py file firstly, then check options li
 
 ### Method 1: Update config.py file(for manual) ###
 
-User just need to update the config.py file then run LUK.py, this is a better method when user want to load manually.
+User just need to update the config.py file then run LUK.py, this is a better choice when user want to load manually.
 ```bash
 # Update config.py file for the Macros you want to change like BOOTTYPE, EMULATOR,COM_PORT, then run
 sudo python3 LUK.py
@@ -19,21 +19,23 @@ sudo python3 LUK.py
 
 ### Method 2: Change Macros via options(for automation) ###
 
-Options from user have higher priority, when both options apecified and macros in config.py, the tool will use options 
-and keep the config.py no change, this is a better method when user want to load in automation testing.
+Options from user have higher priority, when both options specified and macros in config.py, the tool will use options 
+and keep the config.py no change, this is a better choice when user want to load in automation testing.
 ```bash
 # Just load with nfsboot, and no need to copy files
 >sudo python3 LUK.py -b nfsboot -m adsp-sc584-ezkit --ipaddres 10.100.4.50 --serverip 10.100.4.174
 
-# No need to update uboot and load with ramboot with providing deply folder
+# No need to update uboot and load with ramboot with providing deploy folder
 >sudo python3 LUK.py -b ramboot -m adsp-sc584-ezkit -f /tmp/deploy/images/adsp-sc584-ezkit
 
-# CCES_HOME need to be set if update uboot, TODO, when openOCD repo is ready this should be change to OPENOCD_HOME
-# Only update uboot, not laod kernel, 
->sudo CCES_HOME=/opt/analog/cces/${ccesVersion} python3 LUK.py -m adsp-sc584-ezkit --updateUboot -e 2000 --ipaddres 10.100.4.50 --serverip 10.100.4.174
+# Only update uboot, not load kernel, 
+>sudo python3 LUK.py -m adsp-sc584-ezkit --updateUboot -e 2000 --ipaddres 10.100.4.50 --serverip 10.100.4.174
 
-# Update uboot and load with nfsboot with providing deplyfolder
->sudo CCES_HOME=/opt/analog/cces/${ccesVersion} python3 LUK.py -b nfsboot -m adsp-sc584-ezkit -f /tmp/deploy/images/adsp-sc584-ezkit/ --updateUboot -e 2000 --ipaddres 10.100.4.50 --serverip 10.100.4.174
+# Update uboot and load with nfsboot with providing deploy folder
+>sudo python3 LUK.py -b nfsboot -m adsp-sc584-ezkit -f /tmp/deploy/images/adsp-sc584-ezkit/ --updateUboot -e 2000 --ipaddres 10.100.4.50 --serverip 10.100.4.174
+
+# Update uboot and load with nfsboot with providing deploy folder using dhcp
+>sudo python3 LUK.py -b nfsboot -m adsp-sc584-ezkit -f /tmp/deploy/images/adsp-sc584-ezkit/ --updateUboot -e 2000 --dhcp
 ```
 
 ### Help ###

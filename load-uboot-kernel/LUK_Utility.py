@@ -13,10 +13,20 @@
 import os,re,shutil,serial
 from io import BytesIO as StringIO
 import threading
-from config import IMAGE_TYPES, COPY_DST_FOLDER, NFS_TAR_FILE_POSTFIX, NFS_DST_FOLDER, RAMDISK_FILE_POSTFIX, RAMDISK_FILE_NAME, \
-    UBOOT_FILE_LIST, NFS_CP_CMD_LIST, Z_IMAGE, DTB_POSTFIX
 
+# Utility related parameters when do image copy
+IMAGE_TYPES = ['adsp-sc5xx-full', 'adsp-sc5xx-minimal', 'adsp-sc5xx-ramdisk'] 
+COPY_DST_FOLDER = '/tftpboot'
+NFS_TAR_FILE_POSTFIX = '.tar.xz'
+NFS_DST_FOLDER= '/romfs'
+NFS_CP_CMD_LIST = ["sudo rm -rf NFSFOLDER", "sudo mkdir NFSFOLDER", "sudo chmod 777 NFSFOLDER", "tar -xvf NFS_SRC_TAR_FILE -C NFSFOLDER" ]
+RAMDISK_FILE_POSTFIX = '.cpio.xz.u-boot'
+RAMDISK_FILE_NAME = 'ramdisk.cpio.xz.u-boot'
+UBOOT_FILE_LIST = ['u-boot', 'u-boot.ldr']
+Z_IMAGE = 'zImage'
+DTB_POSTFIX = '.dtb'
 
+	
 def copyFiles(bootType, machine, deployFolder, updateUboot = True):
 
     fileList = []
@@ -33,7 +43,7 @@ def copyFiles(bootType, machine, deployFolder, updateUboot = True):
             for f in files:
                 for image in IMAGE_TYPES:
                     targetTarFile = "%s-%s%s" %(image, machine, NFS_TAR_FILE_POSTFIX)
-                    targetRamdiskFile = "%s-%s%s" %(image, machine,RAMDISK_FILE_POSTFIX)
+                    targetRamdiskFile = "%s-%s%s" %(image, machine, RAMDISK_FILE_POSTFIX)
                     if f == targetTarFile: 
                         tarFile = targetTarFile
                     elif f == targetRamdiskFile: 

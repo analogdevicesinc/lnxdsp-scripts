@@ -17,12 +17,45 @@ import shutil
 import subprocess
 import signal
 import serial
-from config import *
-from LUK_Utility import copyFiles, LogFile, replaceMacros
+from config import OPENOCD_HOME, OPENOCD_CONFIG_PATH, OPENOCD_PATH, SERIAL_BAUDRATE, SERIAL_TIMEOUT
+from LUK_Utility import copyFiles, LogFile, replaceMacros, COPY_DST_FOLDER
+
+# Time is in seconds
+SHORT_SLEEP_TIME = 2
+WAIT_TIMEOUT = 5
+UART_TIMEOUT = 3*60
+
+# GDB related parameters
+GDB_OPENOCD_DEFAULT_PORT = '3333'
+GDB_DEFAULT_PATH = 'ARM/arm-none-eabi/bin/'
+GDB_DEFAULT_BINARY = 'arm-none-eabi-gdb'
+GDB_LOAD_UBOOT = 'u-boot'
+GDB_ELF_FILE = 'init.elf'
+GDB_ERROR_CMD = r'\^error,msg=(\".*\")'
+GDB_PROMPT = '(gdb) \n'
+GDB_SEND_CMDS = ['load %s'%GDB_ELF_FILE, 'c', 'Ctrl-c', 'load %s' %GDB_LOAD_UBOOT, 'c']
+
+# BOOT commands for different boot type
+DHCP_CMD = ['dhcp']
+SET_IP = ['set serverip SERVER_IP', 'set ipaddr IP_ADDR']
+BOOT_CMD = {
+'update_uboot': ['run update'],
+'nfsboot': ['run nfsboot'],
+'ramboot': ['run ramboot'],
+'sdcardboot': ['run sdcardboot']
+}
+
+UBOOT_LOAD_PASS_MSG = 'sc #'
+KERNEL_LOAD_PASS_MSG = 'MACHINE login:'
 
 LOADER_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(LOADER_ROOT)
 
+OPENOCD_DEFAULT_BINARY = 'openocd'
+OPENOCD_TARGET_CFG_FILE = {
+    'sc58[4|9]':'adspsc58x.cfg',
+    'sc573':'adspsc57x.cfg',
+}
 
 class UbootKernelLoader:
 

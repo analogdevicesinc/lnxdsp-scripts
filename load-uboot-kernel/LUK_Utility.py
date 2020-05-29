@@ -13,6 +13,12 @@
 import os,re,shutil,serial
 from io import BytesIO as StringIO
 import threading
+import importlib
+try:
+    importlib.import_module('easyprocess')
+except ImportError as e:
+    os.system("%s -m pip install %s"%(sys.executable, 'easyprocess'))
+from easyprocess import EasyProcess
 
 # Utility related parameters when do image copy
 IMAGE_TYPES = ['adsp-sc5xx-full', 'adsp-sc5xx-minimal', 'adsp-sc5xx-ramdisk'] 
@@ -40,6 +46,19 @@ def copyFiles(bootType, machine, deployFolder, updateUboot = True):
         fileList += [ Z_IMAGE, processor + DTB_POSTFIX ]
         tarFile = ''
         ramdiskFile = ''
+        if deployFolder.startswith('//'):
+            mount = '/mnt/shared'
+            unmountCmd = ['umount', '-l', mount]
+            if not os.path.exists(mount):
+                os.mkdir(mount)
+            if os.path.ismount(mount):
+                EasyProcess(unmountCmd).call(timeout=10)
+            p = EasyProcess(['mount','-t', 'cifs', deployFolder,mount, '-o', 'user=testlab2,password=Labrat1' ]).call(timeout=10)
+            if 'mount error' in p.stderr:
+                p = EasyProcess(['mount','-t', 'cifs', deployFolder,mount, '-o', 'user=testlab2,password=Labrat1,vers=3.0' ])
+            if p.return_code not in (0, 8192, 256):
+                raise Exception(f"Failed to mount the shared folder {deployFolder}:{p.stderr}")
+            deployFolder = mount
         for (roots, dirs, files ) in os.walk( deployFolder ):
             for f in files:
                 for image in IMAGE_TYPES:

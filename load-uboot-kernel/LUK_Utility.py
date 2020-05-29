@@ -22,7 +22,7 @@ NFS_DST_FOLDER= '/romfs'
 NFS_CP_CMD_LIST = ["sudo rm -rf NFSFOLDER", "sudo mkdir NFSFOLDER", "sudo chmod 777 NFSFOLDER", "tar -xvf NFS_SRC_TAR_FILE -C NFSFOLDER" ]
 RAMDISK_FILE_POSTFIX = '.cpio.xz.u-boot'
 RAMDISK_FILE_NAME = 'ramdisk.cpio.xz.u-boot'
-UBOOT_FILE_LIST = ['u-boot', 'u-boot.ldr']
+UBOOT_FILE_LIST = ['u-boot-PROCESSOR', 'u-boot-PROCESSOR.ldr']
 Z_IMAGE = 'zImage'
 DTB_POSTFIX = '.dtb'
 
@@ -31,12 +31,13 @@ def copyFiles(bootType, machine, deployFolder, updateUboot = True):
 
     fileList = []
     os.environ[ 'tftp' ] = COPY_DST_FOLDER
+    processor = machine[5:]
 
     if updateUboot:
-        fileList += UBOOT_FILE_LIST
+        fileList += replaceMacros([("PROCESSOR", processor)], UBOOT_FILE_LIST)
 
     if bootType.lower() in ("nfsboot", "ramboot") :
-        fileList += [ Z_IMAGE, machine[5:] + DTB_POSTFIX ]
+        fileList += [ Z_IMAGE, processor + DTB_POSTFIX ]
         tarFile = ''
         ramdiskFile = ''
         for (roots, dirs, files ) in os.walk( deployFolder ):

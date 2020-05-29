@@ -96,7 +96,7 @@ def copyFiles(bootType, machine, deployFolder, updateUboot = True):
         os.makedirs( COPY_DST_FOLDER )
     for file in fileList:
         fileDir = os.path.join(deployFolder, file)
-        if os.path.exists(fileDir):
+        if os.path.isfile(fileDir):
             shutil.copyfile(fileDir, os.path.join(COPY_DST_FOLDER, file))
         else:
             raise Exception("Can't copy due to the %s doesn't exist in %s" %(fileDir, deployFolder) )

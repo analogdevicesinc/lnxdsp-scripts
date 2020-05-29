@@ -10,7 +10,7 @@
 #
 #########################################################################################
 
-import os,re,shutil,serial
+import os,re,sys, shutil,serial
 from io import BytesIO as StringIO
 import threading
 import importlib
@@ -28,7 +28,7 @@ NFS_DST_FOLDER= '/romfs'
 NFS_CP_CMD_LIST = ["sudo rm -rf NFSFOLDER", "sudo mkdir NFSFOLDER", "sudo chmod 777 NFSFOLDER", "tar -xvf NFS_SRC_TAR_FILE -C NFSFOLDER" ]
 RAMDISK_FILE_POSTFIX = '.cpio.xz.u-boot'
 RAMDISK_FILE_NAME = 'ramdisk.cpio.xz.u-boot'
-UBOOT_FILE_LIST = ['u-boot-PROCESSOR', 'u-boot-PROCESSOR.ldr']
+UBOOT_FILE_LIST = ['u-boot-PROCESSOR', 'u-boot-PROCESSOR.ldr','init-PROCESSOR.elf']
 Z_IMAGE = 'zImage'
 DTB_POSTFIX = '.dtb'
 
@@ -86,10 +86,17 @@ def copyFiles(bootType, machine, deployFolder, updateUboot = True):
 
     if bootType == "sdcardboot":
             pass # TODO, will add more boot type later
-
+    # cleanup the COPY_DST_FOLDER like /tftpboot before copy files
+    if os.path.exists(COPY_DST_FOLDER):
+        for f in os.listdir( COPY_DST_FOLDER ):
+            src = os.path.join( COPY_DST_FOLDER, f )
+            if os.path.isfile( src ):
+                os.remove( src )
+    else:
+        os.makedirs( COPY_DST_FOLDER )
     for file in fileList:
         fileDir = os.path.join(deployFolder, file)
-        if os.path.isfile(fileDir):
+        if os.path.exists(fileDir):
             shutil.copyfile(fileDir, os.path.join(COPY_DST_FOLDER, file))
         else:
             raise Exception("Can't copy due to the %s doesn't exist in %s" %(fileDir, deployFolder) )

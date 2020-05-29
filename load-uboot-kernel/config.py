@@ -23,7 +23,7 @@ UBOOT_UPDATE = True             #Load the Uboot into flash with openOCD and GDB,
 DHCP = False                    #Use dhcp to get the ipadd and serverip automatically, the default is false
 
 # OpenOCD Related Parameters
-OPENOCD_HOME = '/opt/analog/cces/2.8.3' # TODO this need change when we have openOCD repo
+OPENOCD_HOME = '/opt/analog/cces/2.9.2' # TODO this need change when we have openOCD repo
 OPENOCD_CONFIG_PATH = 'ARM/openocd/share/openocd/scripts/'
 OPENOCD_PATH = 'ARM/openocd/bin/'
 

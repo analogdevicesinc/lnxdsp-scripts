@@ -29,8 +29,8 @@ UART_TIMEOUT = 3*60
 GDB_OPENOCD_DEFAULT_PORT = '3333'
 GDB_DEFAULT_PATH = 'ARM/arm-none-eabi/bin/'
 GDB_DEFAULT_BINARY = 'arm-none-eabi-gdb'
-GDB_LOAD_UBOOT = 'u-boot-PROCESSOE'
-GDB_ELF_FILE = 'init-PROCESSOE.elf'
+GDB_LOAD_UBOOT = 'u-boot-PROCESSOR'
+GDB_ELF_FILE = 'init-PROCESSOR.elf'
 GDB_ERROR_CMD = r'\^error,msg=(\".*\")'
 GDB_PROMPT = '(gdb) \n'
 GDB_SEND_CMDS = ['load %s'%GDB_ELF_FILE, 'c', 'Ctrl-c', 'load %s' %GDB_LOAD_UBOOT, 'c']

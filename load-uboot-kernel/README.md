@@ -22,6 +22,10 @@ sudo python3 LUK.py
 Options from user have higher priority, when both options specified and macros in config.py, the tool will use options 
 and keep the config.py no change, this is a better choice when user want to load in automation testing.
 ```bash
+# please provide mount username and password if you want to copy images from shared folder like //shared/folder
+echo {mount-username} >username.txt
+echo {mount-password} >password.txt
+
 # Just load with nfsboot, and no need to copy files
 >sudo python3 LUK.py -b nfsboot -m adsp-sc584-ezkit --ipaddr 10.100.4.50 --serverip 10.100.4.174
 

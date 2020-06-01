@@ -10,15 +10,11 @@
 #
 #########################################################################################
 
-import os,re,sys, shutil,serial
+import os,re,shutil,serial
 from io import BytesIO as StringIO
 import threading
-import importlib
-try:
-    importlib.import_module('easyprocess')
-except ImportError as e:
-    os.system("%s -m pip install %s"%(sys.executable, 'easyprocess'))
 from easyprocess import EasyProcess
+from config import MOUNT_USERNAME, MOUNT_PASSWORD
 
 # Utility related parameters when do image copy
 IMAGE_TYPES = ['adsp-sc5xx-full', 'adsp-sc5xx-minimal', 'adsp-sc5xx-ramdisk'] 
@@ -53,9 +49,15 @@ def copyFiles(bootType, machine, deployFolder, updateUboot = True):
                 os.mkdir(mount)
             if os.path.ismount(mount):
                 EasyProcess(unmountCmd).call(timeout=10)
-            p = EasyProcess(['mount','-t', 'cifs', deployFolder,mount, '-o', 'user=testlab2,password=Labrat1' ]).call(timeout=10)
+
+            usernameFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'username.txt')
+            passwordFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'password.txt')
+            username = open(usernameFile, 'r').read().strip() if os.path.isfile(usernameFile) else MOUNT_USERNAME
+            password = open(passwordFile, 'r').read().strip() if os.path.isfile(passwordFile) else MOUNT_PASSWORD
+            
+            p = EasyProcess(['mount','-t', 'cifs', deployFolder,mount, '-o', f'user={username},password={password}' ]).call(timeout=10)
             if 'mount error' in p.stderr:
-                p = EasyProcess(['mount','-t', 'cifs', deployFolder,mount, '-o', 'user=testlab2,password=Labrat1,vers=3.0' ])
+                p = EasyProcess(['mount','-t', 'cifs', deployFolder,mount, '-o', f'user={username},password={password},vers=3.0' ])
             if p.return_code not in (0, 8192, 256):
                 raise Exception(f"Failed to mount the shared folder {deployFolder}:{p.stderr}")
             deployFolder = mount
@@ -84,8 +86,6 @@ def copyFiles(bootType, machine, deployFolder, updateUboot = True):
                 raise Exception("Can't find the ramdisk file")
             fileList.append(ramdiskFile)
 
-    if bootType == "sdcardboot":
-            pass # TODO, will add more boot type later
     # cleanup the COPY_DST_FOLDER like /tftpboot before copy files
     if os.path.exists(COPY_DST_FOLDER):
         for f in os.listdir( COPY_DST_FOLDER ):

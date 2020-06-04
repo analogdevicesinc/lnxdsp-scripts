@@ -30,3 +30,7 @@ OPENOCD_PATH = 'ARM/openocd/bin/'
 # Serial Port Configuration
 SERIAL_BAUDRATE= 57600
 SERIAL_TIMEOUT = 1
+
+# mount.cifs username and password
+MOUNT_USERNAME = 'test'
+MOUNT_PASSWORD = 'test'

@@ -13,6 +13,8 @@
 import os,re,shutil,serial
 from io import BytesIO as StringIO
 import threading
+from easyprocess import EasyProcess
+from config import MOUNT_USERNAME, MOUNT_PASSWORD
 
 # Utility related parameters when do image copy
 IMAGE_TYPES = ['adsp-sc5xx-full', 'adsp-sc5xx-minimal', 'adsp-sc5xx-ramdisk'] 
@@ -22,7 +24,7 @@ NFS_DST_FOLDER= '/romfs'
 NFS_CP_CMD_LIST = ["sudo rm -rf NFSFOLDER", "sudo mkdir NFSFOLDER", "sudo chmod 777 NFSFOLDER", "tar -xvf NFS_SRC_TAR_FILE -C NFSFOLDER" ]
 RAMDISK_FILE_POSTFIX = '.cpio.xz.u-boot'
 RAMDISK_FILE_NAME = 'ramdisk.cpio.xz.u-boot'
-UBOOT_FILE_LIST = ['u-boot', 'u-boot.ldr']
+UBOOT_FILE_LIST = ['u-boot-PROCESSOR', 'u-boot-PROCESSOR.ldr','init-PROCESSOR.elf']
 Z_IMAGE = 'zImage'
 DTB_POSTFIX = '.dtb'
 
@@ -31,14 +33,34 @@ def copyFiles(bootType, machine, deployFolder, updateUboot = True):
 
     fileList = []
     os.environ[ 'tftp' ] = COPY_DST_FOLDER
+    processor = machine[5:]
 
     if updateUboot:
-        fileList += UBOOT_FILE_LIST
+        fileList += replaceMacros([("PROCESSOR", processor)], UBOOT_FILE_LIST)
 
     if bootType.lower() in ("nfsboot", "ramboot") :
-        fileList += [ Z_IMAGE, machine[5:] + DTB_POSTFIX ]
+        fileList += [ Z_IMAGE, processor + DTB_POSTFIX ]
         tarFile = ''
         ramdiskFile = ''
+        if deployFolder.startswith('//'):
+            mount = '/mnt/shared'
+            unmountCmd = ['umount', '-l', mount]
+            if not os.path.exists(mount):
+                os.mkdir(mount)
+            if os.path.ismount(mount):
+                EasyProcess(unmountCmd).call(timeout=10)
+
+            usernameFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'username.txt')
+            passwordFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'password.txt')
+            username = open(usernameFile, 'r').read().strip() if os.path.isfile(usernameFile) else MOUNT_USERNAME
+            password = open(passwordFile, 'r').read().strip() if os.path.isfile(passwordFile) else MOUNT_PASSWORD
+            
+            p = EasyProcess(['mount','-t', 'cifs', deployFolder,mount, '-o', f'user={username},password={password}' ]).call(timeout=10)
+            if 'mount error' in p.stderr:
+                p = EasyProcess(['mount','-t', 'cifs', deployFolder,mount, '-o', f'user={username},password={password},vers=3.0' ])
+            if p.return_code not in (0, 8192, 256):
+                raise Exception(f"Failed to mount the shared folder {deployFolder}:{p.stderr}")
+            deployFolder = mount
         for (roots, dirs, files ) in os.walk( deployFolder ):
             for f in files:
                 for image in IMAGE_TYPES:
@@ -64,9 +86,14 @@ def copyFiles(bootType, machine, deployFolder, updateUboot = True):
                 raise Exception("Can't find the ramdisk file")
             fileList.append(ramdiskFile)
 
-    if bootType == "sdcardboot":
-            pass # TODO, will add more boot type later
-
+    # cleanup the COPY_DST_FOLDER like /tftpboot before copy files
+    if os.path.exists(COPY_DST_FOLDER):
+        for f in os.listdir( COPY_DST_FOLDER ):
+            src = os.path.join( COPY_DST_FOLDER, f )
+            if os.path.isfile( src ):
+                os.remove( src )
+    else:
+        os.makedirs( COPY_DST_FOLDER )
     for file in fileList:
         fileDir = os.path.join(deployFolder, file)
         if os.path.isfile(fileDir):

@@ -29,8 +29,8 @@ UART_TIMEOUT = 3*60
 GDB_OPENOCD_DEFAULT_PORT = '3333'
 GDB_DEFAULT_PATH = 'ARM/arm-none-eabi/bin/'
 GDB_DEFAULT_BINARY = 'arm-none-eabi-gdb'
-GDB_LOAD_UBOOT = 'u-boot'
-GDB_ELF_FILE = 'init.elf'
+GDB_LOAD_UBOOT = 'u-boot-PROCESSOR'
+GDB_ELF_FILE = 'init-PROCESSOR.elf'
 GDB_ERROR_CMD = r'\^error,msg=(\".*\")'
 GDB_PROMPT = '(gdb) \n'
 GDB_SEND_CMDS = ['load %s'%GDB_ELF_FILE, 'c', 'Ctrl-c', 'load %s' %GDB_LOAD_UBOOT, 'c']
@@ -164,7 +164,7 @@ class UbootKernelLoader:
         gdbBin = GDB_DEFAULT_BINARY
         self.gdbProcess = subprocess.Popen( 
             args = [ os.path.normpath( os.path.join( OPENOCD_HOME, gdbPath, gdbBin ) ), 
-                    '-q', '--interpreter=mi2', '--nx', GDB_LOAD_UBOOT],
+                    '-q', '--interpreter=mi2', '--nx', GDB_LOAD_UBOOT.replace("PROCESSOR", self.machine[5:])],
             cwd =  os.path.normpath(COPY_DST_FOLDER),
             stdin = subprocess.PIPE, 
             stdout =  subprocess.PIPE,
@@ -176,7 +176,7 @@ class UbootKernelLoader:
             self.logOutput( self.read_until_prompt(), True )
         except:pass
 
-        for cmd in GDB_SEND_CMDS:
+        for cmd in replaceMacros([("PROCESSOR", self.machine[5:])], GDB_SEND_CMDS) :
             if cmd == 'Ctrl-c': 
                 self.gdbProcess.send_signal(signal.SIGINT)
             else:
@@ -202,9 +202,12 @@ class UbootKernelLoader:
         if UBOOT_LOAD_PASS_MSG in self.data:  
             for bt in BOOT_CMD:
                 if bt == self.bootType:
-                    kernelBootCmd = DHCP_CMD + BOOT_CMD[bt] if self.dhcp else \
-                        replaceMacros([('SERVER_IP', self.serverip), ('IP_ADDR', self.ipaddr)], SET_IP) + BOOT_CMD[bt]
-                    for cmd in kernelBootCmd:
+                    # save the boot information, then auto boot will go into the correct boot type
+                    self.writeDataToSerial( "setenv bootcmd %s"%BOOT_CMD[bt][0] )
+                    for ip in replaceMacros([('SERVER_IP', self.serverip), ('IP_ADDR', self.ipaddr)], SET_IP):
+                        self.writeDataToSerial( ip )
+                    self.writeDataToSerial( "saveenv" )
+                    for cmd in BOOT_CMD[bt]:
                         self.writeDataToSerial( cmd )
             startTime = time.time()
             endTime = time.time()
@@ -251,12 +254,12 @@ class UbootKernelLoader:
         if process is None: process = self.gdbProcess 
         output = ''
         while(True):
-            line = process.stdout.readline()
-            output += line.decode('utf-8')
+            line = process.stdout.readline().decode('utf-8')
+            output += line
             if timestamp and checkTimeout(timeout=WAIT_TIMEOUT, timestamp=runTime):
                 return output
             else:
-                if not line or line.startswith(message.encode('utf-8')): 
+                if not line or line.startswith(message): 
                     return output
 
     def send_cmd_gdb(self, cmd):

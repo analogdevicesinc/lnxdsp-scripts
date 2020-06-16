@@ -1,7 +1,5 @@
 #########################################################################################
 # Copyright (c), 2020 - Analog Devices Inc. All Rights Reserved. 
-# This software is PROPRIETARY & CONFIDENTIAL to Analog Devices, Inc.
-# and its licensors.
 #########################################################################################
 # File:
 #   <LUK.py>

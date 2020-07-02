@@ -270,7 +270,7 @@ class UbootKernelLoader:
         while self.serial.inWaiting():
             for i in range(0,6):
                 data = data + self.serial.readline()
-        self.data += data.decode('utf-8')
+        self.data += data.decode('utf-8', errors="replace")
 
     def writeDataToSerial(self, cmd, timeout=5):
         # the serial write need time to flush

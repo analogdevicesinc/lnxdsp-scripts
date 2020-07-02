@@ -19,7 +19,7 @@ IP_ADDR = '10.100.4.50'         #Board IP Address
 BOOTTYPE = 'nfsboot'            #Specify the boot type like nfsboot,ramboot or sdcardboot
 COM_PORT = '/dev/ttyUSB0'       #Specify the COM port connected to UART
 DEPLOY_FOLDER = ''              #Specify the deploy folder to find the images that to be loaded
-UBOOT_UPDATE = True             #Load the Uboot into flash with openOCD and GDB, the default is none
+UBOOT_UPDATE = False             #Load the Uboot into flash with openOCD and GDB, the default is none
 DHCP = False                    #Use dhcp to get the ipadd and serverip automatically, the default is false
 
 # OpenOCD Related Parameters

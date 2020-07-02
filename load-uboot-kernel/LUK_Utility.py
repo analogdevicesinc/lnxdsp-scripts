@@ -21,7 +21,7 @@ IMAGE_TYPES = ['adsp-sc5xx-full', 'adsp-sc5xx-minimal', 'adsp-sc5xx-ramdisk']
 COPY_DST_FOLDER = '/tftpboot'
 NFS_TAR_FILE_POSTFIX = '.tar.xz'
 NFS_DST_FOLDER= '/romfs'
-NFS_CP_CMD_LIST = ["sudo rm -rf NFSFOLDER", "sudo mkdir NFSFOLDER", "sudo chmod 777 NFSFOLDER", "tar -xvf NFS_SRC_TAR_FILE -C NFSFOLDER" ]
+NFS_CP_CMD_LIST = ["sudo rm -rf NFSFOLDER", "sudo mkdir NFSFOLDER", "sudo chmod 777 NFSFOLDER", "sudo tar -xvf NFS_SRC_TAR_FILE -C NFSFOLDER" ]
 RAMDISK_FILE_POSTFIX = '.cpio.xz.u-boot'
 RAMDISK_FILE_NAME = 'ramdisk.cpio.xz.u-boot'
 UBOOT_FILE_LIST = ['u-boot-PROCESSOR', 'u-boot-PROCESSOR.ldr','init-PROCESSOR.elf']
@@ -79,7 +79,9 @@ def copyFiles(bootType, machine, deployFolder, updateUboot = True):
             nfsTarFile = os.path.join(deployFolder, tarFile)
             cmdList = replaceMacros([('NFSFOLDER', NFS_DST_FOLDER), ('NFS_SRC_TAR_FILE', nfsTarFile)], NFS_CP_CMD_LIST)
             for cmd in cmdList: 
-                os.system(cmd)
+                p = EasyProcess(cmd).call(timeout=10)
+                if p.return_code:
+                    raise Exception(f"Failed to run command {cmd}:{p.stderr}")
 
         if bootType == "ramboot":
             if ramdiskFile == '':
@@ -107,7 +109,7 @@ def replaceMacros(macros, cmdList):
     for line in cmdList:
         for macro in macros:
             line = line.replace(macro[0], macro[1])
-            updatedList.append( line )
+        updatedList.append( line )
 
     return updatedList 
 

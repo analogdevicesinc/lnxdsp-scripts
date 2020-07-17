@@ -87,6 +87,12 @@ fi
 eval set -- "$ARGS"
 MACHINE=
 USER_BUILDDIR=
+# check invalid option and give error
+if [ $1 == "--" ] && [ ! -z $2 ]; then
+   usage
+   echo "ERROR: Invalid option $2"
+   return 1 
+fi
 while true;
 do
     case $1 in

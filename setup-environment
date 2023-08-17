@@ -18,115 +18,93 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 # Add options for the script
-# Copyright (C) 2019 Analog Devices, Inc.
+# Copyright (C) 2023 Analog Devices, Inc.
 
-CWD=`pwd`
+CWD="$(pwd)"
 PROGNAME="setup-environment"
+
+distro_list() {
+    local paths
+    paths=$(find -L sources/ -path '*meta-*adi*/conf/distro/*' -name '*.conf')
+    echo "$paths" | xargs basename -s .conf | sort -u | awk '{print "\t" $0}'
+}
+
+machine_list() {
+    find -L sources/meta-adi/meta-adi-adsp-sc5xx/conf/machine -maxdepth 1 -name '*.conf' | xargs basename -s .conf | sort -u | awk '{print "\t" $0}'
+}
 
 usage()
 {
-    echo -e "
-Usage: source $PROGNAME -m <machine> -b <build-dir> 
-Usage: source $PROGNAME -b <build-dir>
-Usage: source $PROGNAME -h
-Usage: source $PROGNAME
-    <machine>    machine name
-    <build-dir>  build directory
+    cat >&2 <<EOF
+Usage: source $PROGNAME --machine <MACHINE> --builddir <BUILDDIR>
+Usage: source $PROGNAME --builddir <BUILDDIR>
+
+Options:
+    -h, --help         Print this usage message
+    -m, --machine      Set the MACHINE name in the build configuration
+    -b, --builddir     Set the build directory in the build configuration
 
 The first usage is for creating a new build directory. In this case, the
-script creates the build directory <build-dir>, configures it for the
-specified <machine>, and prepares the calling shell for running
-bitbake on the build directory.
-"
+script creates the build directory <BUILDDIR>, configures it for the
+specified <MACHINE> and <DISTRO>, and prepares the calling shell for
+running bitbake on the build directory.
 
-    ls sources/meta-adi/meta-adi-adsp-sc5xx/conf/machine/*.conf > /dev/null 2>&1
-    ls sources/meta-adi/meta-adi-adsp-sc5xx/conf/distro/adi-*.conf > /dev/null 2>&1
-    if [ $? -eq 0 ]; then
-        echo -e "
-Supported machines: `echo; ls sources/meta-adi/meta-adi-adsp-sc5xx/conf/machine/*.conf \
-| sed s/\.conf//g | sed -r 's/^.+\///' | xargs -I% echo -e "\t%"`
+The second usage is for using an existing build directory. In this case,
+the script prepares the calling shell for running bitbake on the build
+directory <BUILDDIR>. The build directory configuration is unchanged.
 
-Supported ADI's distros: `echo; ls sources/meta-adi/meta-adi-adsp-sc5xx/conf/distro/adi-*.conf \
-| sed s/\.conf//g | sed -r 's/^.+\///' | xargs -I% echo -e "\t%"`
+Available distros:
+$(distro_list)
+Available machines:
+$(machine_list)
 
 Examples:
+- To create a new Yocto build directory:
+  $ source $PROGNAME --machine adsp-sc598-som-ezkit --builddir adsp-build
 
-- To create a new Yocto build directory, the order can't be changed, -m firstly -b secondly:
-  $ source $PROGNAME -m adsp-sc589-ezkit -b build 
-- To create a new Yocto build directory, the build dir is 'build' by default if there is no -b <build-dir> provided:
-  $ source $PROGNAME -m adsp-sc589-ezkit
 - To use an existing Yocto build directory:
-  $ source $PROGNAME -b builddir
-- Reuse existing 'build' folder.
-  $ source $PROGNAME
-- To get the help information
-  $ source $PROGNAME -h
-"
-    fi
+  $ source $PROGNAME --builddir adsp-build
+
+EOF
 }
 
 clean_up()
 {
-   unset LIST_MACHINES VALID_MACHINE USER_BUILDDIR
-   unset CWD TEMPLATES SHORTOPTS LONGOPTS ARGS PROGNAME
-   unset generated_config updated
-   unset MACHINE SDKMACHINE DISTRO OEROOT
+   unset MACHINE USER_BUILDDIR CWD TEMPLATES
+   unset SHORTOPTS LONGOPTS ARGS PROGNAME
+   unset generated_config SDKMACHINE DISTRO OEROOT generated_config
 }
 
-SHORTOPTS="hmb"
-LONGOPTS="help,machine,builddir"
+# get command line options
+SHORTOPTS="hm:b:"
+LONGOPTS="help,machine:,builddir:"
 
-ARGS=$(getopt --options $SHORTOPTS  \
-  --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
+ARGS=$(getopt --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
 # Print the usage menu if invalid options are specified
 if [ $? != 0 ]; then
-   usage && clean_up
+   usage
+   clean_up
    return 1
 fi
 
 eval set -- "$ARGS"
 MACHINE=
 USER_BUILDDIR=
-# check invalid option and give error
-if [ $1 == "--" ] && [ ! -z $2 ]; then
-   usage
-   echo "ERROR: Invalid option $2"
-   return 1 
-fi
+
 while true;
 do
     case $1 in
-        -h|--help)
-           usage
-           clean_up
-           return 0
-           ;;
-        -m|--machine)
-        if [ $# -eq 3 ];then
-            MACHINE="$3"
-        else
-            MACHINE=$4
-        fi
-            shift
-           ;;
-        -b|--builddir)
-        if [ $# -eq 3 ];then
-            USER_BUILDDIR="$3"
-        else
-            USER_BUILDDIR=$4
-        fi
-           shift
-           ;;
-
-        --)
-           shift
-           break
-           ;;
+        -h | --help)       usage; clean_up; return 0 ;;
+        -m | --machine)    MACHINE="$2"; shift 2;;
+        -b | --builddir)   USER_BUILDDIR="$2"; shift 2;;
+        -- )               shift; break ;;
+        * )                break ;;
     esac
 done
 
 if [ "$(whoami)" = "root" ]; then
     echo "ERROR: do not use the BSP as root. Exiting..."
+    return 1
 fi
 
 if [ -z "$USER_BUILDDIR" ]; then
@@ -135,7 +113,7 @@ else
     folder="$USER_BUILDDIR"
 fi
 
-if [ ! -e $CWD/$folder/conf/local.conf ]; then
+if [ ! -e "$CWD"/"$folder"/conf/local.conf ]; then
     build_dir_not_exist="true"
 else
     build_dir_not_exist="false"
@@ -143,64 +121,59 @@ fi
 
 if [ "$build_dir_not_exist" = "true" ] && [ -z "$MACHINE" ]; then
     usage
-    echo -e "ERROR: You must set MACHINE when creating a new build directory."
+    echo "ERROR: You must set MACHINE when creating a new build directory."
     clean_up
     return 1
 fi
+
 # check whether the provided machine is valid or not
-if [ "$build_dir_not_exist" = "true" ] || [ ! -z "$MACHINE" ];then
-    arr=`ls sources/meta-adi/meta-adi-adsp-sc5xx/conf/machine/*.conf | sed s/\.conf//g | sed -r 's/^.+\///'`
-    VALID_MACHINE=
-    for i in $arr
-    do  
-        if [ "$i" == "$MACHINE" ];then
-            VALID_MACHINE=1
-        fi
-    done
-    if [ "$VALID_MACHINE" != 1 ];then
-        usage
-        echo -e "ERROR: The -m <machine> you provide is invalid. "
+if [ "$build_dir_not_exist" = "true" ] || [ -n "$MACHINE" ];then
+    if ! machine_list | grep -qx "[[:space:]]*$MACHINE"; then
+        echo "ERROR: machine \"$MACHINE\" not found"
+        echo "Available MACHINEs:"
+        machine_list
         clean_up
         return 1
     fi
 fi
 
-if [ ! -e $CWD/downloads ];then
-	mkdir $CWD/downloads
+if [ ! -e "$CWD"/downloads ];then
+	mkdir "$CWD"/downloads
 fi
 
-OEROOT=$PWD/sources/poky
-if [ -e $PWD/sources/oe-core ]; then
-    OEROOT=$PWD/sources/oe-core
+OEROOT="$PWD"/sources/poky
+if [ -e "$PWD"/sources/oe-core ]; then
+    OEROOT="$PWD"/sources/oe-core
 fi
 # get the available kernel array for users
-kernel_arr=`ls sources/meta-adi/meta-adi-adsp-sc5xx/recipes-adi/images/*.bb | sed s/\.bb//g | sed -r 's/^.+\///' | xargs -I% echo -e "\t%"`
+kernel_arr="$(find sources/meta-adi/meta-adi-adsp-sc5xx/recipes-adi/images/ -name '*.bb' | sed s/\.bb//g | sed -r 's/^.+\///' | xargs -I% echo -e "\t%")"
 
-. $OEROOT/oe-init-build-env $CWD/$folder > /dev/null
+source "$OEROOT"/oe-init-build-env "$CWD"/"$folder" > /dev/null
 
 # if conf/local.conf not generated, no need to go further
-if [ ! -e conf/local.conf ]; then
-    clean_up && return 1
+if [ ! -e "conf/local.conf" ]; then
+    clean_up
+    return 1
 fi
 
 generated_config=0
 # Clean up PATH, because if it includes tokens to current directories somehow,
 # wrong binaries can be used instead of the expected ones during task execution
-export PATH="`echo $PATH | sed 's/\(:.\|:\)*:/:/g;s/^.\?://;s/:.\?$//'`"
+export PATH="$(echo "$PATH" | sed 's/\(:.\|:\)*:/:/g;s/^.\?://;s/:.\?$//')"
 
-if [ "$build_dir_not_exist" = "true" ] || [ ! -z "$MACHINE" ]; then
-    TEMPLATES=$CWD/sources/base/$MACHINE
-    cp $TEMPLATES/* conf/
-    cp $CWD/sources/base/bblayers.conf conf/bblayers.conf
+if [ "$build_dir_not_exist" = "true" ] || [ -n "$MACHINE" ]; then
+    TEMPLATES="$CWD"/sources/base/"$MACHINE"
+    cp "$TEMPLATES"/* conf/
+    cp "$CWD"/sources/base/bblayers.conf conf/bblayers.conf
     # Change settings according environment
-    sed -e "s,MACHINE ?=.*,MACHINE ?= '$MACHINE',g" \
-        -e "s,DL_DIR ?=.*,DL_DIR ?= '$CWD/downloads',g" \
+    sed -e "s,MACHINE ?=.*,MACHINE ?= \"$MACHINE\",g" \
+        -e "s,DL_DIR ?=.*,DL_DIR ?= \"$CWD/downloads\",g" \
         -i conf/local.conf
 
     generated_config=1
 fi
 
-if [ "$generated_config" == 1 ]; then
+if [ "$generated_config" -eq "1" ]; then
     cat <<EOF
 Your build environment has been configured with:
 

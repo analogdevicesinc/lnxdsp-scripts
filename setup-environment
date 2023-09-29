@@ -22,6 +22,9 @@
 
 CWD="$(pwd)"
 PROGNAME="setup-environment"
+BUILDDIR_DEFAULT="build"
+DISTRO_DEFAULT="adi-distro-glibc"
+
 
 distro_list() {
     local paths
@@ -36,13 +39,14 @@ machine_list() {
 usage()
 {
     cat >&2 <<EOF
-Usage: source $PROGNAME --machine <MACHINE> --builddir <BUILDDIR>
+Usage: source $PROGNAME --machine <MACHINE> --distro <DISTRO> --builddir <BUILDDIR>
 Usage: source $PROGNAME --builddir <BUILDDIR>
 
 Options:
     -h, --help         Print this usage message
     -m, --machine      Set the MACHINE name in the build configuration
-    -b, --builddir     Set the build directory in the build configuration
+    -b, --builddir     Set the build directory in the build configuration (default '${BUILDDIR_DEFAULT}')
+    -d, --distro       Set the DISTRO name in the build configuration (default '${DISTRO_DEFAULT}')
 
 The first usage is for creating a new build directory. In this case, the
 script creates the build directory <BUILDDIR>, configures it for the
@@ -60,7 +64,7 @@ $(machine_list)
 
 Examples:
 - To create a new Yocto build directory:
-  $ source $PROGNAME --machine adsp-sc598-som-ezkit --builddir adsp-build
+  $ source $PROGNAME --machine adsp-sc598-som-ezkit --distro adi-distro-glibc --builddir adsp-build
 
 - To use an existing Yocto build directory:
   $ source $PROGNAME --builddir adsp-build
@@ -72,12 +76,12 @@ clean_up()
 {
    unset MACHINE USER_BUILDDIR CWD TEMPLATES
    unset SHORTOPTS LONGOPTS ARGS PROGNAME
-   unset generated_config SDKMACHINE DISTRO OEROOT generated_config
+   unset generated_config SDKMACHINE DISTRO OEROOT
 }
 
 # get command line options
-SHORTOPTS="hm:b:"
-LONGOPTS="help,machine:,builddir:"
+SHORTOPTS="hm:b:d:"
+LONGOPTS="help,machine:,builddir:,distro:"
 
 ARGS=$(getopt --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
 # Print the usage menu if invalid options are specified
@@ -90,6 +94,7 @@ fi
 eval set -- "$ARGS"
 MACHINE=
 USER_BUILDDIR=
+DISTRO=
 
 while true;
 do
@@ -97,6 +102,7 @@ do
         -h | --help)       usage; clean_up; return 0 ;;
         -m | --machine)    MACHINE="$2"; shift 2;;
         -b | --builddir)   USER_BUILDDIR="$2"; shift 2;;
+        -d | --distro)     DISTRO="$2"; shift 2;;
         -- )               shift; break ;;
         * )                break ;;
     esac
@@ -108,9 +114,13 @@ if [ "$(whoami)" = "root" ]; then
 fi
 
 if [ -z "$USER_BUILDDIR" ]; then
-    folder="build"
+    folder="$BUILDDIR_DEFAULT"
 else
     folder="$USER_BUILDDIR"
+fi
+
+if [ -z "$DISTRO" ]; then
+    DISTRO="$DISTRO_DEFAULT"
 fi
 
 if [ ! -e "$CWD"/"$folder"/conf/local.conf ]; then
@@ -132,6 +142,17 @@ if [ "$build_dir_not_exist" = "true" ] || [ -n "$MACHINE" ];then
         echo "ERROR: machine \"$MACHINE\" not found"
         echo "Available MACHINEs:"
         machine_list
+        clean_up
+        return 1
+    fi
+fi
+
+# check whether the provided distro is valid or not
+if [ "$build_dir_not_exist" = "true" ] || [ -n "$DISTRO" ];then
+    if ! distro_list | grep -qx "[[:space:]]*$DISTRO"; then
+        echo "ERROR: distro \"$DISTRO\" not found"
+        echo "Available DISTROs:"
+        distro_list
         clean_up
         return 1
     fi
@@ -167,6 +188,7 @@ if [ "$build_dir_not_exist" = "true" ] || [ -n "$MACHINE" ]; then
     cp "$CWD"/sources/base/bblayers.conf conf/bblayers.conf
     # Change settings according environment
     sed -e "s,MACHINE ?=.*,MACHINE ?= \"$MACHINE\",g" \
+        -e "s,DISTRO ?=.*,DISTRO ?= \"$DISTRO\",g" \
         -e "s,DL_DIR ?=.*,DL_DIR ?= \"$CWD/downloads\",g" \
         -i conf/local.conf
 
